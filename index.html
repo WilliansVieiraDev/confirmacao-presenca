@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmação de Presença - Evento de Fim de Ano</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: url('evento-convite.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: #fff;
+        }
+        .container {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            max-width: 500px;
+            margin: 100px auto;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        .header {
+            text-align: center;
+        }
+        .header img {
+            max-width: 100%;
+            border-radius: 10px;
+        }
+        .form-group {
+            margin-top: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .form-group input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #f0f0f0;
+            color: #333;
+        }
+        .form-group button {
+            width: 100%;
+            padding: 15px;
+            background-color: #28a745;
+            color: white;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .form-group button:hover {
+            background-color: #218838;
+        }
+        .message {
+            margin-top: 20px;
+            font-size: 18px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="evento-convite.jpg" alt="Convite de Final de Ano">
+        </div>
+        <form id="attendanceForm">
+            <div class="form-group">
+                <label for="cpf">Digite seu CPF:</label>
+                <input type="text" id="cpf" name="cpf" placeholder="000.000.000-00" required>
+            </div>
+            <div class="form-group">
+                <button type="submit"><i class="fas fa-check-circle"></i> Confirmar Presença</button>
+            </div>
+        </form>
+        <div id="message" class="message"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            // Aplicar máscara ao campo de CPF
+            $('#cpf').mask('000.000.000-00');
+
+            // Manipular a submissão do formulário
+            $('#attendanceForm').on('submit', async function (event) {
+                event.preventDefault();
+
+                const cpf = $('#cpf').val().replace(/\D/g, '');
+                const messageElement = $('#message');
+
+                if (!isValidCPF(cpf)) {
+                    messageElement.text('CPF inválido. Por favor, insira um CPF válido.');
+                    return;
+                }
+
+                messageElement.text("Processando...");
+
+                try {
+                    // Verificar se o colaborador existe na base
+                    const verifyResponse = await fetch(`https://ingress-dev.acovisa.com.br/api-colaboradores/colaboradores/por-cpf/${cpf}`, {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    if (verifyResponse.status === 204) {
+                        messageElement.html('CPF não encontrado. Por favor, entre no ERP da Acovisa e atualize seus dados ou contate o RH.');
+                        return;
+                    }
+
+                    if (!verifyResponse.ok) {
+                        throw new Error('Erro ao validar o CPF.');
+                    }
+
+                    const collaboratorData = await verifyResponse.json();
+
+                    // Confirmar a presença do colaborador no evento
+                    const confirmationResponse = await fetch('https://ingress-dev.acovisa.com.br/api-colaboradores/confirmacao-evento', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            evento: 'Festa de fim de ano 2024',
+                            colaboradorId: collaboratorData.id
+                        })
+                    });
+
+                    if (!confirmationResponse.ok) {
+                        throw new Error('Erro ao confirmar presença.');
+                    }
+
+                    messageElement.html(`Obrigado, ${collaboratorData.nomeCompleto}, por confirmar sua presença no evento!`);
+
+                } catch (error) {
+                    messageElement.text('Ocorreu um erro ao processar sua solicitação. Tente novamente mais tarde.');
+                }
+            });
+
+            // Função para validar o CPF
+            function isValidCPF(cpf) {
+                if (cpf.length !== 11 || /^(\d)\1*$/.test(cpf)) {
+                    return false;
+                }
+
+                let sum = 0;
+                let remainder;
+
+                // Validação do primeiro dígito verificador
+                for (let i = 1; i <= 9; i++) {
+                    sum += parseInt(cpf.substring(i - 1, i)) * (11 - i);
+                }
+                remainder = (sum * 10) % 11;
+                if ((remainder === 10) || (remainder === 11)) remainder = 0;
+                if (remainder !== parseInt(cpf.substring(9, 10))) {
+                    return false;
+                }
+
+                sum = 0;
+
+                // Validação do segundo dígito verificador
+                for (let i = 1; i <= 10; i++) {
+                    sum += parseInt(cpf.substring(i - 1, i)) * (12 - i);
+                }
+                remainder = (sum * 10) % 11;
+                if ((remainder === 10) || (remainder === 11)) remainder = 0;
+                if (remainder !== parseInt(cpf.substring(10, 11))) {
+                    return false;
+                }
+
+                return true;
+            }
+        });
+    </script>
+</body>
+</html>

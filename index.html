@@ -105,7 +105,7 @@
 
                 try {
                     // Verificar se o colaborador existe na base
-                    const verifyResponse = await fetch(`https://ingress.acovisa.com.br/api-colaboradores/colaboradores/por-cpf/${cpf}`, {
+                    const verifyResponse = await fetch(`https://ingress-prd.acovisa.com.br/api-colaboradores/colaboradores/por-cpf/${cpf}`, {
                         method: 'GET',
                         headers: { 'Content-Type': 'application/json' }
                     });
@@ -122,7 +122,7 @@
                     const collaboratorData = await verifyResponse.json();
 
                     // Confirmar a presença do colaborador no evento
-                    const confirmationResponse = await fetch('https://ingress.acovisa.com.br/api-colaboradores/confirmacao-evento', {
+                    const confirmationResponse = await fetch('https://ingress-prd.acovisa.com.br/api-colaboradores/confirmacao-evento', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
